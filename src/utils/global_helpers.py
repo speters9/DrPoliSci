@@ -1,0 +1,68 @@
+import functools
+import sys
+import os
+import logging
+
+import opik
+from opik import track
+from opik.integrations.langchain import OpikTracer
+
+from dotenv import load_dotenv
+
+def graceful_exit(func):
+    """Gracefully exit a longrunning script."""
+    @functools.wraps(func)
+    def wrapper_graceful_exit(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except KeyboardInterrupt:
+            print("Keyboard Interrupt detected. Exiting gracefully...")
+            sys.exit(0)
+    return wrapper_graceful_exit
+
+def logger_setup(logger_name="query_logger", log_level=logging.INFO):
+    """
+    Set up and return a logger with the specified name and level.
+    Avoids affecting the root logger by setting propagate to False.
+
+    Args:
+        logger_name (str): The name of the logger.
+        log_level (int): The logging level (e.g., logging.INFO, logging.DEBUG).
+
+    Returns:
+        logger (logging.Logger): Configured logger instance.
+    """
+    # Retrieve or create a logger
+    logger = logging.getLogger(logger_name)
+
+    # Avoid adding duplicate handlers if already set up
+    if not logger.hasHandlers():
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(log_level)  # Match handler level to logger level
+
+        # Set the format for the handler
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s - raised_by: %(name)s')
+        console_handler.setFormatter(formatter)
+
+        # Add the handler to the logger
+        logger.addHandler(console_handler)
+
+    # Set the logger level explicitly and prevent it from propagating to the root
+    logger.setLevel(log_level)
+    logger.propagate = True
+
+    return logger
+
+def build_opik_tracer(workspace, project_name, thread_id=None, tags=None):
+    """Build and return an OpikTracer instance."""
+    load_dotenv()
+    api_key = os.getenv("COMET_API_KEY")
+
+    opik.configure(api_key=api_key, 
+                   use_local=False,
+                   workspace=workspace)
+    
+    tracer=OpikTracer(project_name=project_name, metadata={'Thread ID': thread_id}, tags=[tags])
+
+    return tracer
+

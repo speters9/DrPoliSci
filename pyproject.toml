@@ -1,32 +1,40 @@
-[build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
-
 [project]
 name = "chatbot"
-version = "0.0.1"
+version = "0.1.0"
 description = "RAG chatbot for academic advising"
-authors = [
-  { name = "speters9" },
-]
-
 readme = "README.md"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    
+requires-python = ">=3.12"
+dependencies = [
+    "chromadb>=0.6.3",
+    "docling>=2.28.0",
+    "docling-core>=2.23.3",
+    "faiss-cpu>=1.10.0",
+    "ipykernel>=6.29.5",
+    "jupyter>=1.1.1",
+    "langchain-text-splitters>=0.3.7",
+    "langchain>=0.3.21",
+    "langchain-community>=0.3.20",
+    "pyprojroot>=0.3.0",
+    "python-dotenv>=1.0.1",
+    "sentence-transformers>=3.4.1",
+    "torch>=2.6.0",
+    "opik>=1.6.8",
+    "comet-ml>=3.49.5",
+    "langchain-openai>=0.3.9",
+    "llama-index>=0.12.25",
+    "langchain-chroma>=0.2.2",
+    "langchain-huggingface>=0.1.2",
+    "langgraph>=0.3.20",
+    "langgraph-checkpoint-sqlite>=2.0.6",
+    "langchain-ollama>=0.3.0",
+    "langchain-anthropic>=0.3.10",
 ]
-requires-python = "~=3.10"
 
 
-[tool.ruff]
-line-length = 99
-src = ["chatbot"]
-include = ["pyproject.toml", "chatbot/**/*.py"]
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu124", marker = "platform_system != 'Darwin'" }]
 
-[tool.ruff.lint]
-extend-select = ["I"]  # Add import sorting
-
-[tool.ruff.lint.isort]
-known-first-party = ["chatbot"]
-force-sort-within-sections = true
-
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
