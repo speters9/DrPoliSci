@@ -25,43 +25,14 @@ from IPython.display import Image, display
 from pyprojroot.here import here
 
 from src.utils.prompts import polisci_advisor, router
+from src.utils.rag_tools import get_model, get_vdb_index
 import sqlite3
 import chromadb
 import uuid
 
 #%% 
-
-def get_model(model_name: str, temperature: float = 0, **kwargs):
-    """
-    Get a model from the environment variables.
-    """
-    # Load the environment variables
-    load_dotenv()
-
-    # Get the model from the environment variables
-    if "claude" in model_name:
-        from langchain_anthropic import ChatAnthropic
-        if not os.getenv("ANTHROPIC_API_KEY"):
-            raise ValueError("ANTHROPIC_API_KEY not found in environment variables.")
-        os.environ["ANTHROPIC_API_KEY"] = os.getenv("ANTHROPIC_API_KEY")
-        return ChatAnthropic(model=model_name, temperature=temperature, **kwargs)
-    elif "gpt" in model_name:
-        from langchain_openai import ChatOpenAI
-        if not os.getenv("OPENAI_API_KEY"):
-            raise ValueError("OPENAI_API_KEY not found in environment variables.")
-        os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-        return ChatOpenAI(model=model_name, temperature=temperature, **kwargs)
-    elif 'llama' in model_name:
-        from langchain_ollama import ChatOllama
-        return ChatOllama(model=model_name, temperature=temperature, **kwargs)
-    else:
-        raise ValueError(f"Model {model_name} not supported.")
     
-
 class State(TypedDict):
-    # Messages have the type "list". The `add_messages` function
-    # in the annotation defines how this state key should be updated
-    # (in this case, it appends messages to the list, rather than overwriting them)
     messages: Annotated[list, add_messages]
     session_id: Optional[str] = None
     thread_id: Optional[str] = None
@@ -137,21 +108,12 @@ class RagNode:
                  vdb_path: str = here() / "data/vdb",
                  **kwargs):
         self.model = get_model(model_name, temperature)
-        self.client = chromadb.PersistentClient(path=str(vdb_path))
-        self.embeddings_fn = create_langchain_embedding(
-                        HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
-                        )
-        self.collection = self.client.get_or_create_collection(name="coi",
-                                                embedding_function=self.embeddings_fn,
-                                                metadata={"description": "usafa course of instruction"})
-        self.vector_store = Chroma(
-            client=self.client,
-            collection_name="coi",
-            embedding_function=self.embeddings_fn
-        )
+
+        self.index = get_vdb_index(db_path=vdb_path, db_name="coi")
+
         self.search_type = kwargs.get('search_type', "similarity")
         self.k = kwargs.get('k', 15)
-        self.retriever = self.vector_store.as_retriever(search_type=self.search_type, k=self.k)
+        self.retriever = self.index.as_retriever(similarity_top_k=self.k)
         self.tracer = build_opik_tracer(workspace="llm-testing", 
                                         project_name="polsci-advisor", 
                                         thread_id=thread_id,
@@ -161,14 +123,14 @@ class RagNode:
         formatted_docs = []
         for doc in docs:
             meta = "\n".join([f"{header}: {meta}" for header, meta in doc.metadata.items()])
-            formatted_doc = "\n\n".join([f"Metadata: {meta}", f"Content: {doc.page_content}"])
+            formatted_doc = "\n\n".join([f"Metadata: {meta}", f"Content: {doc.text}"])
             formatted_docs.append(formatted_doc)
 
         return "\n## Reference Document:\n".join(formatted_docs)
 
     def run(self, state: State):
         query = state["messages"][-1].content
-        docs = self.retriever.invoke(query, config = {"callbacks": [self.tracer]})
+        docs = self.retriever.retrieve(query)
         formatted_docs = self.format_docs(docs)
 
         state["messages"].append(AIMessage(content=f"Here are some documents that may help you: {formatted_docs}"))

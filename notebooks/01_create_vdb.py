@@ -6,16 +6,21 @@ import uuid
 
 from pyprojroot.here import here
 from dotenv import load_dotenv
+from tqdm import tqdm
 
+from flair.nn import Classifier
+from flair.splitter import SegtokSentenceSplitter
 
 from langchain_text_splitters import MarkdownHeaderTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
 
 import chromadb
-from chromadb.utils.embedding_functions import create_langchain_embedding
 
-from llama_index.core import SimpleDirectoryReader
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.vector_stores.chroma import ChromaVectorStore
+from llama_index.core import StorageContext
+
+from IPython.display import Markdown, display
 
 load_dotenv()
 vdb_path = here() / "data/vdb"
@@ -23,6 +28,41 @@ output_path = here() / "data/processed"
 
 #%%
 
+# remove urls, emails, and proper names from the text
+def clean_text(text: str) -> str:
+    """Remove urls and emails from text."""
+    pattern = r'(?:[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)|(?:https?://[^\s]+)'
+    return re.sub(pattern, '[url]', text)
+
+def remove_names(doc_chunk) -> str:
+    original_text = doc_chunk.page_content
+    sentences = splitter.split(original_text)
+    tagger.predict(sentences)
+    sentence_list = []
+    return_as_is = True
+
+    for sentence in sentences:
+        sent_dict = sentence.to_dict()
+        text = sent_dict['text']
+        if sent_dict.get('entities'):
+            for entity in sent_dict['entities']:
+                # Check if the entity is a person (PER)
+                if any(label.get('value') == 'PER' for label in entity['labels']):
+                    return_as_is = False
+                    # Use re.escape to safely use the entity text as a regex pattern
+                    pattern = re.escape(entity['text'])
+                    text = re.sub(pattern, '[NAME]', text)
+        sentence_list.append(text)
+    if return_as_is:
+        return original_text
+    else:
+        return " ".join(sentence_list)
+
+splitter = SegtokSentenceSplitter()
+tagger = Classifier.load('ner')
+
+
+#%%
 # load documents
 reader = SimpleDirectoryReader(input_dir=str(output_path))
 documents = reader.load_data()
@@ -31,10 +71,10 @@ documents = reader.load_data()
 #%%
 # split markdown text into headers and add unique identifiers
 headers_to_split_on = [
-    ("#", "Header 1"),
-    ("##", "Header 2"),
-    ("###", "Header 3"),
-    ("####", "Header 4"),
+    ("#", "Document"),
+    ("##", "Chapter"),
+    ("###", "Section"),
+    ("####", "Subsection"),
 ]
 
 markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on)
@@ -43,46 +83,80 @@ split_docs = []
 for doc in documents:
      split_docs.extend(markdown_splitter.split_text(doc.text))
 
-for split_doc in split_docs:
-    # pull dict representation of the document
+for split_doc in tqdm(split_docs):
+    # get doc ids and clean text
     if not split_doc.model_dump().get('id', None):
         split_doc.id = str(uuid.uuid4())
+    
+    # remove person names from text
+    names_removed = remove_names(split_doc)
+
+    # remove urls and emails from text
+    cleaned_text = clean_text(names_removed)
+
+    # update document text
+    split_doc.page_content = cleaned_text
+
 
 
 # %%
 
 # create db and add documents
+
 client = chromadb.PersistentClient(path=str(vdb_path))
+embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-base-en-v1.5")
 
-# define embedding function
-embeddings_fn_raw = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-mpnet-base-v2")  # "sentence-transformers/msmarco-distilbert-cos-v5"
-embeddings_fn = create_langchain_embedding(embeddings_fn_raw)
-
-# create collection
+# # create collection
 collection = client.get_or_create_collection(name="coi",
-                                                embedding_function=embeddings_fn,
                                                 metadata={"description": "usafa course of instruction"})
 
-vector_store = Chroma(
-    client=client,
-    collection_name="coi",
-    embedding_function=embeddings_fn
-)
 
-# add documents to collection
-vector_store.add_documents(documents=split_docs)
+vector_store = ChromaVectorStore(chroma_collection=collection)
+storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+index = VectorStoreIndex.from_documents(
+    documents=split_docs,
+    embed_model=embed_model,
+    storage_context=storage_context
+)
 
 
 
 #%%
 if __name__ == "__main__":
-    retriever = vector_store.as_retriever(search_type="similarity", k=15)
+    from src.utils.chatbot import get_model
+    from llama_index.core.retrievers import VectorIndexRetriever
+    from llama_index.core import get_response_synthesizer
+    from llama_index.core.query_engine import RetrieverQueryEngine
+    from llama_index.core import Settings
 
-    query = "What should I major in if I'm interested in flying after I graduate?"
+    # retriever = vector_store.as_retriever(search_type="similarity", k=15)
 
-    response = retriever.invoke(query)
+    # query = "What should I major in if I'm interested in flying after I graduate?"
 
-    print([doc.page_content for doc in response])
+    # response = retriever.invoke(query)
+
+    # print([doc.page_content for doc in response])
+
+    
+    Settings.llm = get_model(model_name="gpt-4o-mini")
+    Settings.context_window = 128000
+
+    retriever = VectorIndexRetriever(
+                index=index,
+                similarity_top_k=8
+            )
+
+    response_synthesizer = get_response_synthesizer(
+        response_mode="tree_summarize",
+    )
+    #query_engine = index.as_retriever(llm=llm)
+    query_engine = RetrieverQueryEngine(
+        retriever=retriever,
+        response_synthesizer=response_synthesizer,
+    )
+
+    response = query_engine.query("I'm interested in a class about the politics of Asia. What should I take?")
+    display(Markdown(f"<b>{response}</b>"))
 
 # %%
