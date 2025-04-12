@@ -1,0 +1,32 @@
+app:
+  name: "Dr. PoliSci"
+  port: 8501
+  open_browser: true
+  environment: "development"
+
+model:
+  model_name: "gemini-2.0-flash"
+  temperature: 0.3
+  streaming: false
+
+paths:
+  session_tracking: "data/chat_histories/session_tracking"
+  checkpoint_db: "data/sqlite/checkpoints.db"
+  summary_prompt: "src/prompts/summary_template.txt"
+
+timeouts:
+  idle_seconds: 300       # 5 minutes
+  watchdog_poll_seconds: 60
+  autorefresh_seconds: 30
+
+summary:
+  enabled: true
+  include_advice: true
+  include_next_steps: true
+  format_sections: true
+
+graph:
+  retriever_type: "hybrid_rerank"
+  retriever_weights: [0.7, 0.3]
+  k: 5
+  device: "cuda"  # or "cpu"

@@ -1,13 +1,11 @@
 import functools
 import sys
-import os
 import logging
+import yaml
 
-import opik
-from opik import track
-from opik.integrations.langchain import OpikTracer
+from pyprojroot.here import here
 
-from dotenv import load_dotenv
+from src.utils.config_types import *
 
 def graceful_exit(func):
     """Gracefully exit a longrunning script."""
@@ -53,16 +51,16 @@ def logger_setup(logger_name="query_logger", log_level=logging.INFO):
 
     return logger
 
-def build_opik_tracer(workspace, project_name, thread_id=None, tags=None):
-    """Build and return an OpikTracer instance."""
-    load_dotenv()
-    api_key = os.getenv("COMET_API_KEY")
 
-    opik.configure(api_key=api_key, 
-                   use_local=False,
-                   workspace=workspace)
-    
-    tracer=OpikTracer(project_name=project_name, metadata={'Thread ID': thread_id}, tags=[tags])
+def load_config(path="config.yaml") -> FullConfig:
+    with open(here(path), "r") as f:
+        raw = yaml.safe_load(f)
 
-    return tracer
-
+    return FullConfig(
+        app=AppConfig(**raw["app"]),
+        model=ModelConfig(**raw["model"]),
+        paths=PathsConfig(**{k: here(v) for k, v in raw["paths"].items()}),
+        timeouts=TimeoutsConfig(**raw["timeouts"]),
+        summary=SummaryConfig(**raw["summary"]),
+        graph=GraphConfig(**raw["graph"]),
+    )
