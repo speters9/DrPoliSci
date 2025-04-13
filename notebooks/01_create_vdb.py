@@ -1,6 +1,6 @@
-
+"""Load markdown files, clean and redact PII, and store in vector database accessed by LlamaIndex."""
 #%%
-import os
+
 import re
 import uuid
 
@@ -29,11 +29,6 @@ output_path = here() / "data/processed"
 
 #%%
 
-# remove urls, emails, and proper names from the text
-def clean_text(text: str) -> str:
-    """Remove urls and emails from text."""
-    pattern = r'(?:[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)|(?:https?://[^\s]+)'
-    return re.sub(pattern, '[url]', text)
 
 def remove_names(doc_chunk) -> str:
     original_text = doc_chunk.page_content
@@ -60,6 +55,89 @@ def remove_names(doc_chunk) -> str:
     else:
         return " ".join(sentence_list)
 
+
+def strip_phone_numbers(text: str, replacement="[phone]") -> str:
+    phone_pattern = re.compile(
+        r"""
+        (\+?1[\s\-\.]?)?                # Optional country code
+        (\()?                           # Optional opening parenthesis
+        \d{3}                           # Area code
+        (\))?                           # Optional closing parenthesis
+        [\s\-\.]?                       # Separator (space, dash, dot)
+        \d{3}                           # First 3 digits
+        [\s\-\.]?                       # Separator
+        \d{4}                           # Last 4 digits
+        """,
+        re.VERBOSE
+    )
+    return phone_pattern.sub(replacement, text)
+
+def fallback_redact_names(text: str, replacement="[NAME]") -> str:
+    """
+    Redacts names that follow common titles, e.g., 'Dr. Smith', 'Gen Patton'.
+    Skips if '[NAME]' already present.
+    """
+    TITLES = [
+        # Academic / Professional
+        "Dr", "Prof", "Professor", "Hon", "Rev", 
+        
+        # Civilian
+        "Mr", "Mrs", "Ms", "Miss", "Mx",
+
+        # Military
+        "General", "Gen", "Colonel", "Col", "Lieutenant Colonel", "Lt Col", "Lt. Col", "Major", "Maj", "Captain", "Capt",
+        "Lieutenant", "Lt", "Commander", "Cdr", 
+        "C1C", "C2C", "C3C", "C4C", "Cadet", 
+        "Admiral", "Adm", "Chief", "CMSgt", "Master Sergeat", "MSgt", "Technical Sergeant", "TSgt",
+        "Staff Sergeant", "SSgt", 
+
+        # Political
+        "Senator", "Sen", "Representative", "Rep", "Governor", "Gov", "President", "Pres",
+        "Ambassador", "Amb", "Secretary", "Sec", 
+
+        # Law Enforcement
+        "Officer", "Detective", "Inspector", "Deputy", "Sheriff"
+    ]
+
+    # Create a regex-safe pattern
+    TITLE_PATTERN = r"(?:{})(?:\.)?".format("|".join(map(re.escape, TITLES)))
+
+    pattern = re.compile(
+        rf"""
+        \b                          # Word boundary to ensure clean title
+        {TITLE_PATTERN}             # Known title (e.g., Dr, Gen, Prof, etc.)
+        \s+                         # One or more spaces
+        (?!{re.escape(replacement)}) # Do not match if already redacted
+        [A-Z][a-z]+                # First name part (capitalized)
+        (?:-[A-Z][a-z]+)?          # Optional hyphenated part in first name
+        (?:                        # Begin optional last name group
+            \s+                   # Space between first and last name
+            [A-Z][a-z]+           # Last name part
+            (?:-[A-Z][a-z]+)?     # Optional hyphenated last name
+        )?                         # End optional last name group
+        \b                         # Word boundary at the end
+        """,
+        flags=re.VERBOSE
+    )
+    no_names = pattern.sub(replacement, text)
+
+    # if there was trailing punctuation, remove it but keep the tag
+    cleaned_up = re.sub(r'\[NAME\][\s]*[,.!?;]', '[NAME]', no_names)
+    return cleaned_up
+
+
+# remove urls, emails, and proper names from the text
+def clean_text(text: str) -> str:
+    """Remove urls and emails from text."""
+    pattern = r'(?:[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)|(?:https?://[^\s]+)'
+
+    no_urls = re.sub(pattern, '[url]', text)
+    no_names = fallback_redact_names(no_urls)
+    no_phones = strip_phone_numbers(no_names)
+    return no_phones
+
+
+
 def extract_course_name(text):
     # Remove leading hashes and spaces first
     text = re.sub(r'^[#\s]+', '', text.strip())
@@ -75,6 +153,8 @@ def combine_subsection(doc_chunk):
         if course:
             doc_chunk.metadata['Subsection'] = course
     return doc_chunk
+
+
 
 splitter = SegtokSentenceSplitter()
 tagger = Classifier.load('ner')
@@ -110,7 +190,7 @@ for split_doc in tqdm(split_docs):
     # remove person names from text
     names_removed = remove_names(split_doc)
 
-    # remove urls and emails from text
+    # remove urls, phones, and backup name removal from text
     cleaned_text = clean_text(names_removed)
 
     # update document text
@@ -151,6 +231,7 @@ if __name__ == "__main__":
     from llama_index.core import get_response_synthesizer
     from llama_index.core.query_engine import RetrieverQueryEngine
     from llama_index.core import Settings
+    from pprint import pprint
 
     # retriever = vector_store.as_retriever(search_type="similarity", k=15)
 
@@ -180,5 +261,8 @@ if __name__ == "__main__":
 
     response = query_engine.query("What is Pol Sci 300 about?")
     display(Markdown(f"<b>{response}</b>"))
+
+    namecheck = retriever.retrieve("Who should I talk to if I still have questions about minors after talking to my AIC?")
+    pprint(namecheck[5])
 
 # %%
