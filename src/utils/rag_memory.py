@@ -27,19 +27,21 @@ The purpose of this summary is to serve as a reminder for the next time you meet
 A helpful way to summarize is to use the following format. Each section should be no longer than 1-2 sentences:
 # Summary of our last conversation:
     ## **Academics**
-        - Student Interests, Background, or Goals
+        - Student Interests, Background, or Goals (if discussed)
     ## **Career**:
-        - Student's Desired Career Path or Interests
+        - Student's Desired Career Path or Interests (if discussed)
     ## **Student Questions**: 
         - Student's Questions or Concerns
     ## **Your Advice**: 
         - Your Recommendations or Clarifications (if any)
+        - If you only answered a student's question and did not give any advice, just say None.
     ## **Next Steps**: 
         - Decisions Made or Agreed-Upon Actions (if any)
+        - If no next steps were discussed, just say None.
     
 ## Guidelines:
     - **Do NOT** include information in your summary that was not discussed in the conversation.
-        - For example, if a student's career plans were not discussed, do not include that section in the summary. 
+        - For example, if you only answered a student's question and did not give any advice, just say None for that section.
     - **Do NOT** include any new information or assumptions that were not part of the conversation.
 
 Here is the conversation history:

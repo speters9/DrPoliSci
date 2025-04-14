@@ -33,6 +33,7 @@ def render_markdown(md_text: str, font=FONT, size=SIZE, color="black") -> str:
     md_text = md_text.replace("\\n", "\n").replace("\n", "  \n")
     html_body = markdown.markdown(md_text, extensions=["extra"])
     html_body = html_body.replace("<em>", "<i>").replace("</em>", "</i>")
+    html_body = html_body.replace("<strong>", "<b>").replace("</strong>", "</b>")
 
     formatted_html = f"""<font face="{font}" size="{size}" color="{color}">
         {html_body}
@@ -223,8 +224,7 @@ def chat_with_agent():
 
     # read markdown add
     intro = render_markdown("""
-    **Dr. PoliSci:**\nPlease enter your username.\n\n
-    If you do not have one, please create one and remember it. This is how the system will remember you.\n*It might take a few seconds to load the memory...*
+    **Dr. PoliSci:**\nPlease enter your username.\n\nIf you do not have one, please create one and remember it. This is how the system will remember you.\n\n*It might take a few seconds to load the memory...*
     """)
     chat_display.set_html(intro)
  
