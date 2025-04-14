@@ -58,7 +58,7 @@ def chat_with_agent():
     chat_frame.pack(fill="both", expand=True)
 
     # Create canvas inside the frame
-    chat_canvas = Canvas(chat_frame, bg=light_fg, highlightthickness=0)
+    chat_canvas = Canvas(chat_frame, bg="white", highlightthickness=0)
     chat_canvas.pack(side="left", fill="both", expand=True)
 
     # Scrollbar next to the canvas
@@ -82,7 +82,7 @@ def chat_with_agent():
     chat_inner_frame.bind("<Configure>", on_configure)
 
     def on_canvas_resize(event):
-        chat_canvas.itemconfig(chat_window_id, width=event.width)
+        chat_canvas.itemconfig(chat_window_id, width=event.width, height=event.height)
 
     chat_canvas.bind("<Configure>", on_canvas_resize)
 
