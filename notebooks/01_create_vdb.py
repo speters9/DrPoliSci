@@ -1,6 +1,6 @@
 """Load markdown files, clean and redact PII, and store in vector database accessed by LlamaIndex."""
 #%%
-
+import os
 import re
 import uuid
 
@@ -55,18 +55,22 @@ def remove_names(doc_chunk) -> str:
     else:
         return " ".join(sentence_list)
 
-
 def strip_phone_numbers(text: str, replacement="[phone]") -> str:
     phone_pattern = re.compile(
         r"""
-        (\+?1[\s\-\.]?)?                # Optional country code
-        (\()?                           # Optional opening parenthesis
-        \d{3}                           # Area code
-        (\))?                           # Optional closing parenthesis
-        [\s\-\.]?                       # Separator (space, dash, dot)
-        \d{3}                           # First 3 digits
-        [\s\-\.]?                       # Separator
-        \d{4}                           # Last 4 digits
+        # Optional country code
+        (\+?1[\s\-\.])?
+        
+        # Optional area code (3 digits) with optional parentheses
+        (\(?\d{3}\)?[\s\-\.])?
+        
+        # First 3 digits (for full numbers) or 3-digit start of a 7-digit number
+        \d{3}
+        
+        [\s\-\.]      # Separator (space, dash, dot)
+        
+        # Last 4 digits
+        \d{4}
         """,
         re.VERBOSE
     )
@@ -154,7 +158,12 @@ def combine_subsection(doc_chunk):
             doc_chunk.metadata['Subsection'] = course
     return doc_chunk
 
-
+def include_doc_metadata(doc_chunk) -> Document:
+    """Extract metadata from doc and append to doc text for model awareness."""
+    meta_str = "\n".join(f"- **{k}:** {v}" for k,v in doc_chunk.metadata.items())
+    newmeta = f"## Metadata\n{meta_str}\n\n## Text\n"
+    doc_chunk.page_content = newmeta + doc_chunk.page_content
+    return doc_chunk
 
 splitter = SegtokSentenceSplitter()
 tagger = Classifier.load('ner')
@@ -167,9 +176,27 @@ documents = reader.load_data()
 
 
 #%%
+## Check redaction logic
+# redacted_dir = output_path / "redacted"
+# os.makedirs(redacted_dir, exist_ok=True)
+
+# ### redact all md docs
+# for doc in documents:
+#     text = doc.text
+#     cleantext = clean_text(text)
+#     filename = doc.metadata.get("file_name", str(uuid.uuid4())).rstrip(".md")
+
+#     # save to md
+#     with open(redacted_dir / f"{filename}_redacted.txt", "w", encoding="utf-8") as f:
+#         f.write(cleantext)
+
+
+#%%
 # split markdown text into headers and add unique identifiers
+#### IMPORTANT ### --- Replace the document name in line 1 of each .md doc with "$"
 headers_to_split_on = [
-    ("#", "Document"),
+    ("$", "Document"),
+    ("#", "Unit"),
     ("##", "Chapter"),
     ("###", "Section"),
     ("####", "Subsection"),
@@ -181,6 +208,8 @@ split_docs = []
 for doc in documents:
      split_docs.extend(markdown_splitter.split_text(doc.text))
 
+
+#%%
 clean_docs = []
 for split_doc in tqdm(split_docs):
     # get doc ids and clean text
@@ -198,7 +227,9 @@ for split_doc in tqdm(split_docs):
 
     # combine subsections (only exist if they describe academic classes)
     cleaned_doc = combine_subsection(split_doc)
-    clean_docs.append(cleaned_doc)
+    updated_metadata = include_doc_metadata(cleaned_doc)
+
+    clean_docs.append(updated_metadata)
 
 
 
@@ -263,6 +294,6 @@ if __name__ == "__main__":
     display(Markdown(f"<b>{response}</b>"))
 
     namecheck = retriever.retrieve("Who should I talk to if I still have questions about minors after talking to my AIC?")
-    pprint(namecheck[5])
+    pprint(namecheck[0])
 
 # %%

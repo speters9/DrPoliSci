@@ -1,15 +1,19 @@
 """This module creates a framework to align agents with their desired roles."""
 # %%
-
+import sys
 import markdown
-from src.utils.chatbot import ChatbotGraph
 import tkinter as tk
 from tkinter import Canvas, Scrollbar, Frame
 from tkhtmlview import HTMLText
 import markdown
+from pyprojroot.here import here
 
+sys.path.append(str(here()))
 from src.utils.global_helpers import load_config
+from src.utils.chatbot import ChatbotGraph
 
+avatar_path = here("static/drps_avatar.png")
+avatar_uri = avatar_path.as_uri()
 
 #%%
 config = load_config()
@@ -47,7 +51,8 @@ def chat_with_agent():
     """
 
     root = tk.Tk()
-    root.title("🎓 Chat with Dr. PoliSci")
+    root.title("Chat with Dr. PoliSci")
+    root.iconbitmap(default=here("static/drps_icon.ico"))
 
     light_fg = "#dcdcdc"
     slightly_lighter_bg = "#3b3b3b"

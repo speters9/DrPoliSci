@@ -188,3 +188,4 @@ references/
 reports/
 models/
 */**/archive/
+*.bat

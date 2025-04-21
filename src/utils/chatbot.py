@@ -5,6 +5,9 @@ import os
 import json
 import opik
 import re
+import sys
+import sqlite3
+import uuid
 
 from datetime import datetime
 
@@ -28,12 +31,12 @@ from IPython.display import Image, display
 from pyprojroot.here import here
 from dotenv import load_dotenv
 
+
+sys.path.append(str(here()))
 from src.utils.prompts import polisci_advisor, rephraser, router, clarifier
 from src.utils.rag_tools import get_model, RetrieverFactory, build_opik_tracer_langchain, deduplicate_nodes
 from src.utils.rag_memory import finalize_and_prune, get_all_messages_from_thread
 
-import sqlite3
-import uuid
 
 print(f"Imports loaded in {time.time() - start_time:.2f} seconds.")
 
@@ -44,7 +47,6 @@ api_key = os.getenv("COMET_API_KEY")
 opik.configure(api_key=api_key, 
                 use_local=False,
                 workspace="llm-testing")
-
 
 opik_callback_handler = LlamaIndexCallbackHandler(project_name="polsci-advisor",)
 Settings.callback_manager = CallbackManager([opik_callback_handler])
@@ -239,13 +241,14 @@ class RagNode:
 
 
     def format_docs(self, docs):
-        formatted_docs = []
-        for doc in docs:
-            meta = "\n".join([f"{header}: {meta}" for header, meta in doc.metadata.items()])
-            formatted_doc = "\n\n".join([f"Metadata: {meta}", f"Content: {doc.text}"])
-            formatted_docs.append(formatted_doc)
+        # formatted_docs = []
+        #  for i, doc in enumerate(docs):
+            #meta = "\n".join([f"{header}: {meta}" for header, meta in doc.metadata.items()])
+            #formatted_doc = "\n\n".join([f"Metadata: {meta}", f"Content: {doc.text}"])
+            # formatted_doc = f"Next Document {i}:\n{doc.text}"
+            # formatted_docs.append(formatted_doc)
 
-        return "\n## Reference Document:\n".join(formatted_docs)
+        return "\n\n# Next Reference Document:\n".join([doc.text for doc in docs])
 
     def run(self, state: State):
         #query = state["messages"][-1].content

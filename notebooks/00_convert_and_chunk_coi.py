@@ -11,12 +11,7 @@ from dotenv import load_dotenv
 from typing import List, Dict
 from pathlib import Path
 
-from langchain.text_splitter import MarkdownHeaderTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.docstore.document import Document
-from langchain_text_splitters import MarkdownHeaderTextSplitter
-
-from sentence_transformers import SentenceTransformer, util
 from docling_core.transforms.chunker.hierarchical_chunker import DocChunk
 
 
