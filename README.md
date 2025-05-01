@@ -13,11 +13,10 @@ The system routes student queries to one of several nodes based on context: a cl
 - **Rephrasing/Expansion**: Vague or ambiguous queries are reformulated to improve downstream retrieval.
 - **RAG Retrieval**: If the query pertains to course descriptions, policies, or other factual content, relevant context is retrieved from a vector database using a hybrid retriever (vector + BM25 with reranking).
 - **Advisor Response**: A final advisor node generates the reply using a predefined persona, incorporating the retrieved documents and prior conversation history.
-- **Session Memory**: Conversations are checkpointed with SQLite. At the end of a session (manual or idle), a structured summary is generated and saved.
-- **Idle Watchdog**: An optional background process monitors chat activity and automatically finalizes and prunes idle sessions.
+- **Personalized Session Memory**: Conversations are threaded and checkpointed with SQLite. At the end of a session (manual or idle), a structured summary is generated and saved.
 - **Dual Interfaces**:
   - Tkinter GUI via `chat_with_agent.py`
-  - Streamlit web app via `chat_ui.py` with live session tracking
+  - Streamlit web app via `chat_ui.py` with live session tracking and watchdog to automatically prune idle sessions
 
 ---
 
@@ -49,24 +48,26 @@ chatbot/
 ## How to Run
 
 1. **Document Preparation**  
-   Convert and preprocess course materials:
+   Convert and preprocess course materials, and add to vector database/index:
+     - The pipeline has a built-in redaction logic which removes names, email addresses, and phone numbers
    ```bash
    python notebooks/00_convert_and_chunk_coi.py
    python notebooks/01_create_vdb.py
    ```
 
-2. **Run the Bot**
-   - Tkinter:
+3. **Run the Bot**
+   - Tkinter (recommended):
      ```bash
      python notebooks/02_rag_chat.py
      ```
-   - Streamlit:
+   - Streamlit (slow startup):
      ```bash
      python notebooks/03_rag_chat_streamlit.py
      ```
 
-3. **Generate Evaluation Data (Optional)**  
+4. **Generate Evaluation Data (Optional)**  
    Creates a test set of QA pairs for RAG evaluation:
+     - Assumes you have a cometML account, and stores dataset using its Opik functionality.
    ```bash
    python notebooks/04_create_test_set.py
    ```
@@ -83,7 +84,7 @@ System behavior is controlled by `config.yaml`, parsed via dataclasses in `confi
 
 - Python 3.10+
 - `.env` file with keys for OpenAI, Claude, or Gemini models
-- GPU optional but recommended for document preprocessing
-- External dependencies: LlamaIndex, LangGraph, Chroma, Streamlit
+- GPU optional but recommended for document preprocessing (pipeline uses Docling, for accurate table parsing)
+- External dependencies: LlamaIndex, LangGraph, Chroma, Streamlit, Opik
 
 ---
