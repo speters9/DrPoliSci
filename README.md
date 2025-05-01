@@ -1,4 +1,4 @@
-# <img src="static/drps_avatar.png" alt="Logo" width="32" style="vertical-align: middle;"> Dr. PoliSci: Academic Advisor Chatbot
+# <img src="static/drps.png" alt="Logo" width="32" style="vertical-align: middle;"> Dr. PoliSci: Academic Advisor Chatbot
 
 This repository contains a multi-component chatbot designed for academic advising tasks. It combines LangGraph (for routing and state handling), LlamaIndex (for retrieval), and ChromaDB (as a vector store), with session memory and summarization via SQLite.
 
