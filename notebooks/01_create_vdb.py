@@ -293,6 +293,9 @@ if __name__ == "__main__":
     response = query_engine.query("What is Pol Sci 300 about?")
     display(Markdown(f"<b>{response}</b>"))
 
+    response = query_engine.query("What is the deadline for me to drop a class?")
+    display(Markdown(f"<b>{response}</b>"))
+
     namecheck = retriever.retrieve("Who should I talk to if I still have questions about minors after talking to my AIC?")
     pprint(namecheck[0])
 

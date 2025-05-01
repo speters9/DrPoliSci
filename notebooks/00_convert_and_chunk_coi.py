@@ -246,6 +246,11 @@ def rule_at_a_glance(line, state, next_line, output):
         return line
     return None
 
+def rule_table_header(line, state, next_line, output):
+    if re.match(r'^\s*Table\s+\d+', line, re.IGNORECASE):
+        return f'\n### {line.strip()}\n'
+    return None
+
 # --- rules for Appendix 2 and Course Descriptions ---
 def rule_appendix_header(line, state, next_line, output):
     # If the line is a header matching "Appendix 2: Course Descriptions"
@@ -276,7 +281,7 @@ def rule_course_description_divider(line, state, next_line, output):
         abbr = state["dept_abbr"]
         normalized_line = re.sub(r'\s+', ' ', line).strip()
         pattern = fr'^{re.escape(abbr)}\s+[0-9A-Za-z]'
-        if re.match(pattern, normalized_line):
+        if re.match(pattern, normalized_line, re.IGNORECASE):
             return f'#### {normalized_line}\n'
     return None
 
@@ -285,6 +290,7 @@ def rule_default(line, state, next_line, output):
 
 # List of rules in order.
 rules = [
+    rule_table_header,
     rule_appendix_header,
     rule_main_header,
     rule_distribution_requirements,

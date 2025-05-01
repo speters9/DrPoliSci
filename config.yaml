@@ -28,5 +28,5 @@ summary:
 graph:
   retriever_type: "hybrid_rerank"
   retriever_weights: [0.7, 0.3]
-  k: 5
+  k: 8
   device: "cuda"  # or "cpu"

@@ -85,27 +85,6 @@ class RouterNode:
 
         valid_routes = {"memory", "clarify", "rag"}
 
-        # if state.get("clarification_context", {}):
-        #     route = "rephrase"
-
-        # if route not in valid_routes:
-        #     route = "rephrase"
-
-
-        # state["route"] = (
-        #     "history" if route == "memory"
-        #     else "clarify" if route == "clarify"
-        #     else "rephrase"
-        # )
-        #         # if state.get("clarification_context", {}):
-        # #     route = "rephrase"
-
-        # # if route not in valid_routes:
-        # #     route = "rephrase"
-
-        # next step is rephrase or clarify (or chat history if memory)
-        #print(f"before router: {state.get("clarification_context")}")
-
         if state.get("clarification_context", {}) or route == "rag":
             final_route = "rephrase"  # rephrase/augment clarified query
         elif route == "memory":
