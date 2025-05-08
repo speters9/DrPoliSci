@@ -24,23 +24,29 @@ The system routes student queries to one of several nodes based on context: a cl
 
 ```
 chatbot/
+├── data/                 # not in this repo -- should be built by user
+|   ├── raw/              # pdf docs for processing here
+|   ├── processed/        # markdown docs staged here for loading into vdb
+|   ├── vdb/              # vector database saved here
+|   ├── chat_histories/   # threaded chat sessions saved here
+|   └── testset_source/   # test set for retriever tuning goes here
 ├── notebooks/
 │   ├── 00_convert_and_chunk_coi.py       # Convert PDFs to Markdown, chunk text
 │   ├── 01_create_vdb.py                  # Clean + index into vector DB
 │   ├── 02_rag_chat.py                    # Run Tkinter chatbot
-│   ├── 03_rag_chat_streamlit.py         # Launch Streamlit + watchdog
-│   └── 04_create_test_set.py            # Generate QA pairs for testing
+│   ├── 03_rag_chat_streamlit.py          # Launch Streamlit + watchdog
+│   └── 04_create_test_set.py             # Generate QA pairs for testing
 ├── src/utils/
 │   ├── app/
 │   │   ├── chat_ui.py                   # Streamlit frontend
-│   │   └── watch_idle_sessions.py      # Ends idle sessions
+│   │   └── watch_idle_sessions.py       # Ends idle sessions
 │   ├── chatbot.py                       # Defines LangGraph and nodes
-│   ├── chat_with_agent.py              # Tkinter GUI logic
-│   ├── config_types.py                 # Dataclass config schema
-│   ├── global_helpers.py               # Config loader, logging
-│   ├── prompts.py                      # Advisor, router, and helper prompts
-│   ├── rag_memory.py                   # SQLite memory logic + summarization
-│   └── rag_tools.py                    # Retriever classes, embedding logic
+│   ├── chat_with_agent.py               # Tkinter GUI logic
+│   ├── config_types.py                  # Dataclass config schema
+│   ├── global_helpers.py                # Config loader, logging
+│   ├── prompts.py                       # Advisor, router, and helper prompts
+│   ├── rag_memory.py                    # SQLite memory logic + summarization
+│   └── rag_tools.py                     # Retriever classes, embedding logic
 ```
 
 ---
